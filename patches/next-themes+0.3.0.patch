@@ -1,0 +1,61 @@
+diff --git a/node_modules/next-themes/dist/index.js b/node_modules/next-themes/dist/index.js
+index 73a5719..00e3f88 100644
+--- a/node_modules/next-themes/dist/index.js
++++ b/node_modules/next-themes/dist/index.js
+@@ -1,6 +1,6 @@
+ 'use client';
+ 
+-var React = require('react');
++var React = require('react-dom');
+ var jsxRuntime = require('react/jsx-runtime');
+ 
+ function _interopDefault (e) { return e && e.__esModule ? e : { 'default': e }; }
+diff --git a/node_modules/next-themes/package.json b/node_modules/next-themes/package.json
+index 313a296..d434927 100644
+--- a/node_modules/next-themes/package.json
++++ b/node_modules/next-themes/package.json
+@@ -62,7 +62,7 @@
+     "eslint-plugin-react-hooks": "^4.6.0"
+   },
+   "peerDependencies": {
+-    "react": "^16.8 || ^17 || ^18",
++    "react": "^16.8 || ^17 || ^18 || ^19",
+     "react-dom": "^16.8 || ^17 || ^18"
+   },
+   "dependencies": {
+diff --git a/node_modules/next-themes/dist/types.d.ts b/node_modules/next-themes/dist/types.d.ts
+index c6d860d..7312781 100644
+--- a/node_modules/next-themes/dist/types.d.ts
++++ b/node_modules/next-themes/dist/types.d.ts
+@@ -1,4 +1,4 @@
+-import type { ReactNode, Dispatch, SetStateAction } from 'react';
++import type { ReactNode, Dispatch, SetStateAction, ReactElement } from 'react';
+ export interface ThemeProviderProps {
+     /** List of all available theme names */
+     themes?: string[];
+@@ -10,7 +10,7 @@
+     /** If `false`, `setTheme` will not persist the theme in `localStorage` */
+     enableSystem?: boolean;
+     /** If `true`, indicates that the theme provider is nested within another one */
+-    disableTransitionOnChange?: boolean;
++    disableTransitionOnChange?: boolean; 
+     /** Avoids flash of unstyled content if `true` */
+     forcedTheme?: string;
+     /** Update the theme only if the storage changes */
+@@ -18,7 +18,7 @@
+     /** Key used to store theme setting in `localStorage` */
+     storageKey?: string;
+     /** HTML attribute modified with the theme name */
+-    attribute?: string | 'class';
++    attribute?: string;
+     /** Default theme name (for v0.0.12 and lower the default was light). If `enableSystem` is false, the default theme is light */
+     defaultTheme?: string;
+     /** Mapping of theme name to HTML attribute value. Object where key is the theme name and value is the attribute value */
+@@ -29,6 +29,7 @@
+     enableColorScheme?: boolean;
+     /** If `true`, the theme will be set on the `html` element, otherwise on the `body` element. */
+     document?: Document;
++    children?: ReactNode;
+ }
+ export interface UseThemeProps {
+     /** List of all available theme names */

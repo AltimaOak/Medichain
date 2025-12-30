@@ -3,24 +3,30 @@
 import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Activity, Bot, FileText, Sparkles, Stethoscope, TriangleAlert } from 'lucide-react';
-
-import { type AISymptomCheckerOutput } from '@/ai/flows/ai-symptom-checker';
-import { getSymptomAnalysis } from '@/lib/actions';
+import { Activity, Bot, FileText, Sparkles, Stethoscope, TriangleAlert, Mic, User } from 'lucide-react';
+import {
+  aiSymptomChecker,
+  AISymptomCheckerInput,
+  AISymptomCheckerOutput,
+} from '@/ai/flows/ai-symptom-checker';
 import { symptomCheckerSchema, type SymptomCheckerSchema } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/use-auth';
 
 export default function SymptomCheckerForm() {
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<AISymptomCheckerOutput | null>(null);
+  const [progress, setProgress] = useState(0);
   const { toast } = useToast();
+  const { user, reports, addReport } = useAuth();
 
   const form = useForm<SymptomCheckerSchema>({
     resolver: zodResolver(symptomCheckerSchema),
@@ -32,16 +38,28 @@ export default function SymptomCheckerForm() {
 
   const onSubmit = (values: SymptomCheckerSchema) => {
     setResult(null);
+    setProgress(0);
     startTransition(async () => {
-      const response = await getSymptomAnalysis(values);
-      if (response.success && response.data) {
-        setResult(response.data);
-      } else {
+      const interval = setInterval(() => {
+        setProgress(prev => (prev >= 90 ? 90 : prev + 10));
+      }, 500);
+
+      try {
+        const response = await aiSymptomChecker(values);
+        setResult(response);
+        if (user) {
+          addReport({ ...response, date: new Date().toISOString(), symptoms: values.symptoms });
+        }
+        setProgress(100);
+      } catch (e) {
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: response.error,
+          description: 'An unexpected error occurred. Please try again.',
         });
+        setProgress(0);
+      } finally {
+        clearInterval(interval);
       }
     });
   };
@@ -59,7 +77,7 @@ export default function SymptomCheckerForm() {
   };
 
   const ResultSkeleton = () => (
-    <Card className="bg-white/50 dark:bg-card">
+    <Card className="bg-card/50 backdrop-blur-sm">
       <CardHeader>
         <div className="flex items-center gap-3">
           <Skeleton className="h-8 w-8 rounded-full" />
@@ -67,6 +85,7 @@ export default function SymptomCheckerForm() {
         </div>
       </CardHeader>
       <CardContent className="space-y-8">
+        {progress > 0 && <Progress value={progress} className="w-full" />}
         <div className="space-y-4">
           <Skeleton className="h-5 w-40" />
           <Skeleton className="h-4 w-full" />
@@ -88,9 +107,11 @@ export default function SymptomCheckerForm() {
 
   return (
     <div className="grid grid-cols-1 gap-8 md:grid-cols-2 md:gap-12">
-      <Card className="shadow-lg">
+      <Card className="bg-card/50 shadow-lg backdrop-blur-sm">
         <CardHeader>
-          <CardTitle>Your Information</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <User /> Your Information
+          </CardTitle>
           <CardDescription>
             This information will be reviewed by our AI. Please be as detailed as possible.
           </CardDescription>
@@ -105,11 +126,22 @@ export default function SymptomCheckerForm() {
                   <FormItem>
                     <FormLabel>Symptoms</FormLabel>
                     <FormControl>
-                      <Textarea
-                        placeholder="e.g., I have a persistent cough, fever, and headache for the last 3 days..."
-                        className="min-h-[150px] resize-none"
-                        {...field}
-                      />
+                      <div className="relative">
+                        <Textarea
+                          placeholder="e.g., I have a persistent cough, fever, and headache for the last 3 days..."
+                          className="min-h-[150px] resize-none pr-10"
+                          {...field}
+                        />
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="absolute bottom-2 right-2"
+                          onClick={() => toast({ title: 'Voice input not yet implemented.' })}
+                        >
+                          <Mic className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -153,7 +185,7 @@ export default function SymptomCheckerForm() {
       <div className="space-y-4">
         {isPending && <ResultSkeleton />}
         {result && !isPending && (
-          <Card className="animate-in fade-in-50 bg-white/50 shadow-lg dark:bg-card">
+          <Card className="animate-in fade-in-50 bg-card/50 shadow-lg backdrop-blur-sm">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-primary">
@@ -182,7 +214,7 @@ export default function SymptomCheckerForm() {
 
               <Separator />
 
-              <div className="rounded-lg border border-amber-300/50 bg-muted/50 p-4 dark:border-amber-700/50">
+              <div className="rounded-lg border border-amber-300/50 bg-amber-500/10 p-4">
                 <h4 className="flex items-center gap-2 font-semibold text-amber-600 dark:text-amber-400">
                   <TriangleAlert />
                   Important Disclaimer
@@ -193,7 +225,7 @@ export default function SymptomCheckerForm() {
           </Card>
         )}
         {!result && !isPending && (
-            <Card className="flex h-full flex-col items-center justify-center border-dashed p-8 text-center shadow-none md:p-16">
+            <Card className="flex h-full flex-col items-center justify-center border-dashed bg-card/20 p-8 text-center shadow-none backdrop-blur-sm md:p-16">
                 <div className="mb-4 rounded-full bg-primary/10 p-4">
                     <FileText className="h-10 w-10 text-primary"/>
                 </div>
