@@ -26,6 +26,7 @@ export interface Report {
   userId?: string;
   userName?: string;
   userRole?: UserRole;
+  doctorNotes?: string;
 }
 
 interface AuthContextType {
@@ -38,6 +39,7 @@ interface AuthContextType {
   logout: () => void;
   addReport: (report: Report) => void;
   getAllReports: () => Report[];
+  addDoctorNote: (reportDate: string, note: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -174,6 +176,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return getFromStorage<Report[]>('reports', []);
   };
 
+  const addDoctorNote = (reportDate: string, note: string) => {
+    const allReports = getFromStorage<Report[]>('reports', []);
+    const reportIndex = allReports.findIndex(r => r.date === reportDate);
+
+    if (reportIndex !== -1) {
+      allReports[reportIndex].doctorNotes = note;
+      setToStorage('reports', allReports);
+      setReports(allReports);
+    }
+  };
+
 
   const authContextValue: AuthContextType = {
     user,
@@ -185,6 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     logout,
     addReport,
     getAllReports,
+    addDoctorNote,
   };
 
   return (

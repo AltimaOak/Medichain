@@ -3,10 +3,9 @@
 import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Activity, Bot, FileText, Sparkles, Stethoscope, TriangleAlert, Mic, User } from 'lucide-react';
+import { Activity, Bot, FileText, Sparkles, Stethoscope, TriangleAlert, Mic, User, ShieldAlert } from 'lucide-react';
 import {
   aiSymptomChecker,
-  AISymptomCheckerInput,
   AISymptomCheckerOutput,
 } from '@/ai/flows/ai-symptom-checker';
 import { symptomCheckerSchema, type SymptomCheckerSchema } from '@/lib/types';
@@ -20,13 +19,22 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/use-auth.tsx';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Checkbox } from '@/components/ui/checkbox';
+
+const emergencyKeywords = [
+    'chest pain', 'breathing difficulty', 'severe bleeding', 'loss of consciousness',
+    'seizure', 'paralysis', 'severe pain', 'slurred speech', 'vision loss'
+];
 
 export default function SymptomCheckerForm() {
   const [isPending, startTransition] = useTransition();
   const [result, setResult] = useState<AISymptomCheckerOutput | null>(null);
+  const [isEmergency, setIsEmergency] = useState(false);
   const [progress, setProgress] = useState(0);
   const { toast } = useToast();
-  const { user, reports, addReport } = useAuth();
+  const { user, addReport } = useAuth();
+  const [consentGiven, setConsentGiven] = useState(false);
 
   const form = useForm<SymptomCheckerSchema>({
     resolver: zodResolver(symptomCheckerSchema),
@@ -36,9 +44,39 @@ export default function SymptomCheckerForm() {
     },
   });
 
-  const onSubmit = (values: SymptomCheckerSchema) => {
+  const checkForEmergency = (symptoms: string) => {
+    const lowercasedSymptoms = symptoms.toLowerCase();
+    return emergencyKeywords.some(keyword => lowercasedSymptoms.includes(keyword));
+  };
+
+  const handleFormSubmit = (values: SymptomCheckerSchema) => {
     setResult(null);
     setProgress(0);
+    setIsEmergency(false);
+    
+    const isEmergencyCase = checkForEmergency(values.symptoms);
+    setIsEmergency(isEmergencyCase);
+    
+    if (isEmergencyCase) {
+        setResult({
+            possibleConditions: 'Critical Symptoms Detected',
+            confidenceLevel: 'High',
+            nextSteps: 'This appears to be a medical emergency. Please seek immediate medical attention or call emergency services.',
+            disclaimer: 'The AI analysis has been bypassed due to the severity of the symptoms described.'
+        });
+        if (user) {
+            addReport({ 
+                ...values,
+                possibleConditions: 'Critical Symptoms Detected',
+                confidenceLevel: 'High',
+                nextSteps: 'This appears to be a medical emergency. Please seek immediate medical attention or call emergency services.',
+                disclaimer: 'The AI analysis has been bypassed due to the severity of the symptoms described.',
+                date: new Date().toISOString() 
+            });
+        }
+        return;
+    }
+
     startTransition(async () => {
       const interval = setInterval(() => {
         setProgress(prev => (prev >= 90 ? 90 : prev + 10));
@@ -67,11 +105,11 @@ export default function SymptomCheckerForm() {
   const ConfidenceBadge = ({ level }: { level: string }) => {
     let variant: 'default' | 'secondary' | 'destructive' = 'secondary';
     if (level?.toLowerCase() === 'high') {
-      variant = 'default';
-    } else if (level?.toLowerCase() === 'medium') {
-      variant = 'secondary';
-    } else if (level) {
       variant = 'destructive';
+    } else if (level?.toLowerCase() === 'medium') {
+      variant = 'default';
+    } else if (level) {
+      variant = 'secondary';
     }
     return <Badge variant={variant} className="capitalize">{level}</Badge>;
   };
@@ -118,7 +156,7 @@ export default function SymptomCheckerForm() {
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
                 name="symptoms"
@@ -164,19 +202,50 @@ export default function SymptomCheckerForm() {
                   </FormItem>
                 )}
               />
-              <Button type="submit" disabled={isPending} className="w-full">
-                {isPending ? (
-                  <>
-                    <Bot className="mr-2 h-4 w-4 animate-spin" />
-                    Analyzing...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Get Analysis
-                  </>
-                )}
-              </Button>
+               <AlertDialog>
+                <AlertDialogTrigger asChild>
+                    <Button type="button" className="w-full" disabled={!form.formState.isValid}>
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Get Analysis
+                    </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                    <AlertDialogTitle>Consent and Disclaimer</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        <p className="mb-4">
+                        The MediChain AI Symptom Checker is an informational tool and not a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition.
+                        </p>
+                        <p>
+                        By clicking "Agree and Continue," you acknowledge and agree to these terms.
+                        </p>
+                        <div className="flex items-center space-x-2 mt-4">
+                            <Checkbox id="terms" onCheckedChange={(checked) => setConsentGiven(!!checked)} />
+                            <label
+                            htmlFor="terms"
+                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                            >
+                            I have read and agree to the terms
+                            </label>
+                        </div>
+                    </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction 
+                        onClick={() => form.handleSubmit(handleFormSubmit)()}
+                        disabled={!consentGiven || isPending}
+                    >
+                        {isPending ? (
+                            <>
+                                <Bot className="mr-2 h-4 w-4 animate-spin" />
+                                Analyzing...
+                            </>
+                        ) : "Agree and Continue"}
+                    </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </form>
           </Form>
         </CardContent>
@@ -186,6 +255,15 @@ export default function SymptomCheckerForm() {
         {isPending && <ResultSkeleton />}
         {result && !isPending && (
           <Card className="animate-in fade-in-50 bg-card/50 shadow-lg backdrop-blur-sm">
+             {isEmergency && (
+                <div className="flex items-center gap-4 rounded-t-lg border-b-4 border-red-600 bg-red-500/10 p-4">
+                    <ShieldAlert className="h-10 w-10 text-red-600" />
+                    <div>
+                        <h3 className="text-lg font-bold text-red-600">Emergency Warning</h3>
+                        <p className="text-sm text-red-700 dark:text-red-400">Critical symptoms detected. Please seek immediate medical help.</p>
+                    </div>
+                </div>
+            )}
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="flex items-center gap-2 text-primary">

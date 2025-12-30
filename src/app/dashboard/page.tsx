@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import Header from '@/components/header';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { BarChart, Users, FileText, Stethoscope, Search, Download } from 'lucide-react';
-import { AISymptomCheckerOutput } from '@/ai/flows/ai-symptom-checker';
+import { Users, FileText, Stethoscope, Search, Download, MessageSquare, ShieldAlert } from 'lucide-react';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import SymptomCheckerForm from '@/components/symptom-checker-form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 
@@ -224,7 +224,7 @@ function DoctorDashboard() {
 }
 
 function AdminDashboard() {
-  const { users, getAllReports } = useAuth();
+  const { user, users, getAllReports } = useAuth();
   const reports = getAllReports();
   const patientCount = users.filter(u => u.role === UserRole.Patient).length;
   const doctorCount = users.filter(u => u.role === UserRole.Doctor).length;
@@ -268,8 +268,23 @@ function AdminDashboard() {
   );
 }
 
+const emergencyKeywords = [
+    'chest pain', 'breathing difficulty', 'severe bleeding', 'loss of consciousness',
+    'seizure', 'paralysis', 'severe pain', 'slurred speech', 'vision loss'
+];
+
 function ReportCard({ report }: { report: Report }) {
+    const { user, addDoctorNote } = useAuth();
     const [isExpanded, setIsExpanded] = useState(false);
+    const [doctorNote, setDoctorNote] = useState(report.doctorNotes || "");
+    const [isEditingNote, setIsEditingNote] = useState(false);
+    
+    const isEmergency = emergencyKeywords.some(keyword => report.symptoms.toLowerCase().includes(keyword));
+
+    const handleSaveNote = () => {
+        addDoctorNote(report.date, doctorNote);
+        setIsEditingNote(false);
+    };
   
     const handleDownloadPdf = () => {
         const reportElement = document.getElementById(`report-${report.userId}-${report.date}`);
@@ -284,7 +299,6 @@ function ReportCard({ report }: { report: Report }) {
             const ratio = canvasWidth / pdfWidth;
             const height = canvasHeight / ratio;
             
-            // Check if content fits on one page, otherwise split
             if (height <= pdfHeight) {
                 pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, height);
             } else {
@@ -293,7 +307,6 @@ function ReportCard({ report }: { report: Report }) {
                 while (remainingHeight > 0) {
                     const pageCanvas = document.createElement('canvas');
                     pageCanvas.width = canvasWidth;
-                    // page height should be proportional to pdf page height
                     const pageHeight = Math.min(remainingHeight, pdfHeight * ratio);
                     pageCanvas.getContext('2d')?.drawImage(canvas, 0, y, canvasWidth, pageHeight, 0, 0, canvasWidth, pageHeight);
                     const pageImgData = pageCanvas.toDataURL('image/png');
@@ -313,7 +326,22 @@ function ReportCard({ report }: { report: Report }) {
 
     return (
       <Card className="bg-card/70 transition-all">
+        {isEmergency && !isExpanded && (
+            <div className="flex items-center gap-2 rounded-t-lg border-b-2 border-red-600 bg-red-500/10 p-2 text-sm font-semibold">
+                <ShieldAlert className="h-5 w-5 text-red-600" />
+                <span className="text-red-600">Emergency Symptoms Detected</span>
+            </div>
+        )}
          <div id={`report-${report.userId}-${report.date}`} className='p-6'>
+            {isEmergency && isExpanded && (
+                <div className="flex items-center gap-4 rounded-lg border-b-4 border-red-600 bg-red-500/10 p-4 mb-6">
+                    <ShieldAlert className="h-10 w-10 flex-shrink-0 text-red-600" />
+                    <div>
+                        <h3 className="text-lg font-bold text-red-600">Emergency Warning</h3>
+                        <p className="text-sm text-red-700 dark:text-red-400">Critical symptoms detected. This case requires immediate attention.</p>
+                    </div>
+                </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4 cursor-pointer" onClick={() => setIsExpanded(!isExpanded)}>
                 <div className="md:col-span-3">
                     {report.userName && <p className='text-sm font-semibold text-primary'>Patient: {report.userName}</p>}
@@ -340,6 +368,47 @@ function ReportCard({ report }: { report: Report }) {
                         <h4 className="font-semibold text-primary">Next Steps</h4>
                         <p className="text-muted-foreground">{report.nextSteps}</p>
                     </div>
+
+                    {user?.role === UserRole.Doctor && (
+                        <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                            <h4 className="font-semibold text-primary flex items-center gap-2">
+                                <MessageSquare />
+                                Doctor's Notes & Recommendations
+                            </h4>
+                            {isEditingNote ? (
+                                <div className="mt-2 space-y-2">
+                                    <Textarea 
+                                        value={doctorNote}
+                                        onChange={(e) => setDoctorNote(e.target.value)}
+                                        placeholder="Add your notes and recommendations here..."
+                                        className="min-h-[100px]"
+                                    />
+                                    <div className="flex justify-end gap-2">
+                                        <Button variant="ghost" size="sm" onClick={() => setIsEditingNote(false)}>Cancel</Button>
+                                        <Button size="sm" onClick={handleSaveNote}>Save Note</Button>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div onClick={() => setIsEditingNote(true)} className="mt-2 cursor-pointer hover:bg-primary/10 p-2 rounded-md">
+                                    <p className="text-muted-foreground whitespace-pre-wrap">
+                                        {report.doctorNotes || "Click to add notes."}
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {user?.role === UserRole.Patient && report.doctorNotes && (
+                         <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                            <h4 className="font-semibold text-primary flex items-center gap-2">
+                                <MessageSquare />
+                                Doctor's Notes
+                            </h4>
+                            <p className="mt-2 text-muted-foreground whitespace-pre-wrap">{report.doctorNotes}</p>
+                        </div>
+                    )}
+
+
                     <div className="rounded-lg border border-amber-300/50 bg-amber-500/10 p-4">
                         <h4 className="font-semibold text-amber-600 dark:text-amber-400">Important Disclaimer</h4>
                         <p className="mt-2 text-sm text-muted-foreground">{report.disclaimer}</p>
