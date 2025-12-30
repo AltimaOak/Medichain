@@ -1,7 +1,7 @@
 'use client';
 import { MediChainIcon } from '@/components/icons';
 import { Button } from '@/components/ui/button';
-import { useAuth } from '@/hooks/use-auth';
+import { useAuth } from '@/hooks/use-auth.tsx';
 import Link from 'next/link';
 import { ModeToggle } from './mode-toggle';
 

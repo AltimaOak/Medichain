@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useAuth, UserRole } from '@/hooks/use-auth';
+import { useAuth, UserRole } from '@/hooks/use-auth.tsx';
 import { useRouter } from 'next/navigation';
 import { MediChainIcon } from '@/components/icons';
 import Link from 'next/link';

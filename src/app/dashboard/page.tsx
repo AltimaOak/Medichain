@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth, UserRole } from '@/hooks/use-auth';
+import { useAuth, UserRole } from '@/hooks/use-auth.tsx';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Header from '@/components/header';
