@@ -18,7 +18,7 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-auth.tsx';
+import { useAuth } from '@/hooks/use-auth';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Checkbox } from '@/components/ui/checkbox';
 
@@ -212,21 +212,23 @@ export default function SymptomCheckerForm() {
                 <AlertDialogContent>
                     <AlertDialogHeader>
                     <AlertDialogTitle>Consent and Disclaimer</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        <div className="mb-4">
-                        The MediChain AI Symptom Checker is an informational tool and not a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition.
-                        </div>
+                    <AlertDialogDescription asChild>
                         <div>
-                        By clicking "Agree and Continue," you acknowledge and agree to these terms.
-                        </div>
-                        <div className="flex items-center space-x-2 mt-4">
-                            <Checkbox id="terms" onCheckedChange={(checked) => setConsentGiven(!!checked)} />
-                            <label
-                            htmlFor="terms"
-                            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                            >
-                            I have read and agree to the terms
-                            </label>
+                            <p className="mb-4">
+                            The MediChain AI Symptom Checker is an informational tool and not a substitute for professional medical advice, diagnosis, or treatment. Always seek the advice of your physician or other qualified health provider with any questions you may have regarding a medical condition.
+                            </p>
+                            <p className="mb-4">
+                            By clicking "Agree and Continue," you acknowledge and agree to these terms.
+                            </p>
+                            <div className="flex items-center space-x-2 mt-4">
+                                <Checkbox id="terms" onCheckedChange={(checked) => setConsentGiven(!!checked)} />
+                                <label
+                                htmlFor="terms"
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                                >
+                                I have read and agree to the terms
+                                </label>
+                            </div>
                         </div>
                     </AlertDialogDescription>
                     </AlertDialogHeader>

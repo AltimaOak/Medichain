@@ -191,7 +191,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const authContextValue: AuthContextType = {
     user,
     users,
-    reports: user ? reports.filter(r => r.userId === user.id) : [],
+    reports: user
+      ? user.role === UserRole.Patient
+        ? reports.filter((r) => r.userId === user.id)
+        : reports
+      : [],
     isLoading,
     login,
     signup,

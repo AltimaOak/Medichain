@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth, UserRole, Report } from '@/hooks/use-auth.tsx';
+import { useAuth, UserRole, Report } from '@/hooks/use-auth';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
 import Header from '@/components/header';
@@ -472,7 +472,7 @@ const ConfidenceBadge = ({ level }: { level: string }) => {
             }`}>{level}</span>
         </div>
         <div className="w-full bg-muted rounded-full h-2.5">
-          <div className={`h-2.5 rounded-full transition-all duration-500 ease-out ${colorClass}`} style={{ width: `${severityPercentage}%` }}></div>
+          <div className={`h-2.5 rounded-full ${colorClass}`} style={{ width: `${severityPercentage}%` }}></div>
         </div>
       </div>
     );
